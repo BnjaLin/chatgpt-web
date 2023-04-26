@@ -10,7 +10,7 @@ export interface SettingsState {
 
 export function defaultSetting(): SettingsState {
   return {
-    systemMessage: 'You are Asano AI based on ChatGPT 4.0, a large language model. Follow the user\'s instructions carefully. Respond using markdown.',
+    systemMessage: '你是 Asano AI，基于 ChatGPT 4.0。Follow the user\'s instructions carefully. Respond using markdown.',
     temperature: 0.8,
     top_p: 1,
   }
