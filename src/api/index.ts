@@ -1,5 +1,5 @@
 import type { AxiosProgressEvent, GenericAbortSignal } from 'axios'
-import { post } from '@/utils/request'
+import { get, post, streamFetch } from '@/utils/request'
 import { useAuthStore, useSettingStore } from '@/store'
 
 export function fetchChatAPI<T = any>(
@@ -62,5 +62,19 @@ export function fetchVerify<T>(token: string) {
   return post<T>({
     url: '/verify',
     data: { token },
+  })
+}
+
+export const fetchModel = <T>() => {
+  return get<T>({
+    url: '/api/model/customerList',
+  })
+}
+
+export const fetchChat = (data: { prompt: { obj: string; value: string }; chatId: string; modelId: string }, onMessage?: (text: string) => void) => {
+  return streamFetch({
+    url: '/api/chat/chat',
+    data,
+    onMessage,
   })
 }

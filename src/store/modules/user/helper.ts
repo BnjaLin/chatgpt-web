@@ -6,6 +6,9 @@ export interface UserInfo {
   avatar: string
   name: string
   description: string
+  username: string
+  balance: number
+  _id: string
 }
 
 export interface UserState {
@@ -18,6 +21,9 @@ export function defaultSetting(): UserState {
       avatar: '@/assets/avatar.jpg',
       name: '朝野逻辑',
       description: '专注企业数字化升级',
+      username: '',
+      balance: 0,
+      _id: '',
     },
   }
 }

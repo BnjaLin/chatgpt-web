@@ -1,6 +1,5 @@
 import type { AxiosProgressEvent, AxiosResponse, GenericAbortSignal } from 'axios'
 import request from './axios'
-import { useAuthStore } from '@/store'
 
 export interface HttpOption {
   url: string
@@ -8,12 +7,14 @@ export interface HttpOption {
   method?: string
   headers?: any
   onDownloadProgress?: (progressEvent: AxiosProgressEvent) => void
-  signal?: GenericAbortSignal
+  signal?: GenericAbortSignal | AbortSignal
   beforeRequest?: () => void
   afterRequest?: () => void
+  onMessage?: (text: string) => void
 }
 
 export interface Response<T = any> {
+  code: number
   data: T
   message: string | null
   status: string
@@ -23,15 +24,8 @@ function http<T = any>(
   { url, data, method, headers, onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
 ) {
   const successHandler = (res: AxiosResponse<Response<T>>) => {
-    const authStore = useAuthStore()
-
-    if (res.data.status === 'Success' || typeof res.data === 'string')
+    if (res.data.code === 200)
       return res.data
-
-    if (res.data.status === 'Unauthorized') {
-      authStore.removeToken()
-      window.location.reload()
-    }
 
     return Promise.reject(res.data)
   }
@@ -78,6 +72,62 @@ export function post<T = any>(
     signal,
     beforeRequest,
     afterRequest,
+  })
+}
+
+export function streamFetch({ url, data, method = 'POST', signal, onMessage }: HttpOption): Promise<any> {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve, reject) => {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+        signal: signal as AbortSignal,
+      })
+      const reader = res.body?.getReader()
+      if (!reader)
+        return
+
+      const decoder = new TextDecoder()
+
+      let responseText = ''
+
+      const read = async () => {
+        try {
+          const { done, value } = await reader?.read()
+          if (done) {
+            if (res.status === 200) {
+              resolve(responseText)
+            }
+            else {
+              const parseError = JSON.parse(responseText)
+              reject(parseError?.message || '请求异常')
+            }
+            return
+          }
+
+          const text = decoder.decode(value).replace(/<br\/>/g, '\n')
+          responseText += text
+          onMessage && onMessage(text)
+          read()
+        }
+        catch (err: any) {
+          if (err?.message === 'The user aborted a request.')
+            return resolve(responseText)
+
+          // eslint-disable-next-line no-mixed-operators
+          reject(typeof err === 'string' ? err : err?.message || '请求异常')
+        }
+      }
+      read()
+    }
+    catch (err: any) {
+      // eslint-disable-next-line no-mixed-operators
+      reject(typeof err === 'string' ? err : err?.message || '请求异常')
+    }
   })
 }
 

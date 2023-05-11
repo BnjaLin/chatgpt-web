@@ -13,7 +13,7 @@ import HeaderComponent from './components/Header/index.vue'
 import { HoverButton, SvgIcon } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useChatStore, usePromptStore } from '@/store'
-import { fetchChatAPIProcess } from '@/api'
+import { fetchChat, fetchChatAPIProcess } from '@/api'
 import { t } from '@/locales'
 
 let controller = new AbortController()
@@ -49,7 +49,7 @@ const { promptList: promptTemplate } = storeToRefs<any>(promptStore)
 // 未知原因刷新页面，loading 状态不会重置，手动重置
 dataSources.value.forEach((item, index) => {
   if (item.loading)
-    updateChatSome(+uuid, index, { loading: false })
+    updateChatSome(uuid, index, { loading: false })
 })
 
 function handleSubmit() {
@@ -57,7 +57,7 @@ function handleSubmit() {
 }
 
 async function onConversation() {
-  let message = prompt.value
+  const message = prompt.value
 
   if (loading.value)
     return
@@ -68,7 +68,7 @@ async function onConversation() {
   controller = new AbortController()
 
   addChat(
-    +uuid,
+    uuid,
     {
       dateTime: new Date().toLocaleString(),
       text: message,
@@ -90,7 +90,7 @@ async function onConversation() {
     options = { ...lastContext }
 
   addChat(
-    +uuid,
+    uuid,
     {
       dateTime: new Date().toLocaleString(),
       text: '',
@@ -106,49 +106,73 @@ async function onConversation() {
   try {
     let lastText = ''
     const fetchChatAPIOnce = async () => {
-      await fetchChatAPIProcess<Chat.ConversationResponse>({
-        prompt: message,
-        options,
-        signal: controller.signal,
-        onDownloadProgress: ({ event }) => {
-          const xhr = event.target
-          const { responseText } = xhr
-          // Always process the final line
-          const lastIndex = responseText.lastIndexOf('\n', responseText.length - 2)
-          let chunk = responseText
-          if (lastIndex !== -1)
-            chunk = responseText.substring(lastIndex)
-          try {
-            const data = JSON.parse(chunk)
-            updateChat(
-              +uuid,
-              dataSources.value.length - 1,
-              {
-                dateTime: new Date().toLocaleString(),
-                text: lastText + (data.text ?? ''),
-                inversion: false,
-                error: false,
-                loading: true,
-                conversationOptions: { conversationId: data.conversationId, parentMessageId: data.id },
-                requestOptions: { prompt: message, options: { ...options } },
-              },
-            )
-
-            if (openLongReply && data.detail.choices[0].finish_reason === 'length') {
-              options.parentMessageId = data.id
-              lastText = data.text
-              message = ''
-              return fetchChatAPIOnce()
-            }
-
-            scrollToBottomIfAtBottom()
-          }
-          catch (error) {
-            //
-          }
+      fetchChat({
+        prompt: {
+          obj: 'Human',
+          value: message,
         },
+        chatId: '',
+        modelId: chatStore.active as string,
+      }, (text: string) => {
+        lastText += text ?? ''
+        updateChat(
+          uuid,
+          dataSources.value.length - 1,
+          {
+            dateTime: new Date().toLocaleString(),
+            text: lastText,
+            inversion: false,
+            error: false,
+            loading: true,
+            requestOptions: { prompt: message, options: { ...options } },
+          },
+        )
+      }).then(() => {
+        updateChatSome(uuid, dataSources.value.length - 1, { loading: false })
+        scrollToBottomIfAtBottom()
       })
-      updateChatSome(+uuid, dataSources.value.length - 1, { loading: false })
+      // await fetchChatAPIProcess<Chat.ConversationResponse>({
+      //   prompt: message,
+      //   options,
+      //   signal: controller.signal,
+      //   onDownloadProgress: ({ event }) => {
+      //     const xhr = event.target
+      //     const { responseText } = xhr
+      //     // Always process the final line
+      //     const lastIndex = responseText.lastIndexOf('\n', responseText.length - 2)
+      //     let chunk = responseText
+      //     if (lastIndex !== -1)
+      //       chunk = responseText.substring(lastIndex)
+      //     try {
+      //       const data = JSON.parse(chunk)
+      //       updateChat(
+      //         +uuid,
+      //         dataSources.value.length - 1,
+      //         {
+      //           dateTime: new Date().toLocaleString(),
+      //           text: lastText + (data.text ?? ''),
+      //           inversion: false,
+      //           error: false,
+      //           loading: true,
+      //           conversationOptions: { conversationId: data.conversationId, parentMessageId: data.id },
+      //           requestOptions: { prompt: message, options: { ...options } },
+      //         },
+      //       )
+
+      //       if (openLongReply && data.detail.choices[0].finish_reason === 'length') {
+      //         options.parentMessageId = data.id
+      //         lastText = data.text
+      //         message = ''
+      //         return fetchChatAPIOnce()
+      //       }
+
+      //       scrollToBottomIfAtBottom()
+      //     }
+      //     catch (error) {
+      //       //
+      //     }
+      //   },
+      // })
     }
 
     await fetchChatAPIOnce()
@@ -158,7 +182,7 @@ async function onConversation() {
 
     if (error.message === 'canceled') {
       updateChatSome(
-        +uuid,
+        uuid,
         dataSources.value.length - 1,
         {
           loading: false,
@@ -172,7 +196,7 @@ async function onConversation() {
 
     if (currentChat?.text && currentChat.text !== '') {
       updateChatSome(
-        +uuid,
+        uuid,
         dataSources.value.length - 1,
         {
           text: `${currentChat.text}\n[${errorMessage}]`,
@@ -184,7 +208,7 @@ async function onConversation() {
     }
 
     updateChat(
-      +uuid,
+      uuid,
       dataSources.value.length - 1,
       {
         dateTime: new Date().toLocaleString(),
@@ -221,7 +245,7 @@ async function onRegenerate(index: number) {
   loading.value = true
 
   updateChat(
-    +uuid,
+    uuid,
     index,
     {
       dateTime: new Date().toLocaleString(),
@@ -252,7 +276,7 @@ async function onRegenerate(index: number) {
           try {
             const data = JSON.parse(chunk)
             updateChat(
-              +uuid,
+              uuid,
               index,
               {
                 dateTime: new Date().toLocaleString(),
@@ -277,14 +301,14 @@ async function onRegenerate(index: number) {
           }
         },
       })
-      updateChatSome(+uuid, index, { loading: false })
+      updateChatSome(uuid, index, { loading: false })
     }
     await fetchChatAPIOnce()
   }
   catch (error: any) {
     if (error.message === 'canceled') {
       updateChatSome(
-        +uuid,
+        uuid,
         index,
         {
           loading: false,
@@ -296,7 +320,7 @@ async function onRegenerate(index: number) {
     const errorMessage = error?.message ?? t('common.wrong')
 
     updateChat(
-      +uuid,
+      uuid,
       index,
       {
         dateTime: new Date().toLocaleString(),
@@ -481,7 +505,7 @@ onUnmounted(() => {
           <template v-if="!dataSources.length">
             <div class="flex items-center justify-center mt-4 text-center text-neutral-300">
               <SvgIcon icon="ri:bubble-chart-fill" class="mr-2 text-3xl" />
-            <span>欢迎来到 Asano AI 智能大模型，很高兴为您排忧解难</span>
+              <span>欢迎来到 Asano AI 智能大模型，很高兴为您排忧解难</span>
             </div>
           </template>
           <template v-else>

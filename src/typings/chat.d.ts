@@ -13,14 +13,14 @@ declare namespace Chat {
 	interface History {
 		title: string
 		isEdit: boolean
-		uuid: number
+		uuid: number | string
 	}
 
 	interface ChatState {
-		active: number | null
+		active: number | string | null
 		usingContext: boolean;
 		history: History[]
-		chat: { uuid: number; data: Chat[] }[]
+		chat: { uuid: number | string; data: Chat[] }[]
 	}
 
 	interface ConversationRequest {

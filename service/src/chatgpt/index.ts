@@ -33,15 +33,22 @@ if (!isNotEmptyString(process.env.OPENAI_API_KEY) && !isNotEmptyString(process.e
   throw new Error('Missing OPENAI_API_KEY or OPENAI_ACCESS_TOKEN environment variable')
 
 let api: ChatGPTAPI | ChatGPTUnofficialProxyAPI
+let OPENAI_API_KEY: string
+const envOpenaiApiKey = process.env.OPENAI_API_KEY
+const baseUrl = process.env.BASE_URL
 
-(async () => {
-  // More Info: https://github.com/transitive-bullshit/chatgpt-api
+const initApi = async () => {
+  const apiKeyData = await fetch(`${baseUrl}/api/answer/gptKey`).then(res => res.json())
+  OPENAI_API_KEY = (apiKeyData as any).data
 
-  if (isNotEmptyString(process.env.OPENAI_API_KEY)) {
+  if (!OPENAI_API_KEY)
+    OPENAI_API_KEY = process.env.OPENAI_API_KEY
+
+  if (isNotEmptyString(OPENAI_API_KEY)) {
     const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
 
     const options: ChatGPTAPIOptions = {
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: OPENAI_API_KEY,
       completionParams: { model },
       debug: !disableDebug,
     }
@@ -80,7 +87,9 @@ let api: ChatGPTAPI | ChatGPTUnofficialProxyAPI
     api = new ChatGPTUnofficialProxyAPI({ ...options })
     apiModel = 'ChatGPTUnofficialProxyAPI'
   }
-})()
+}
+
+initApi()
 
 async function chatReplyProcess(options: RequestOptions) {
   const { message, lastContext, process, systemMessage, temperature, top_p } = options
@@ -111,7 +120,10 @@ async function chatReplyProcess(options: RequestOptions) {
   }
   catch (error: any) {
     const code = error.statusCode
-    global.console.log(error)
+    if (OPENAI_API_KEY !== envOpenaiApiKey) {
+      await initApi()
+      return await chatReplyProcess(options)
+    }
     if (Reflect.has(ErrorCodeMessage, code))
       return sendResponse({ type: 'Fail', message: ErrorCodeMessage[code] })
     return sendResponse({ type: 'Fail', message: error.message ?? 'Please check the back-end console' })
@@ -119,7 +131,6 @@ async function chatReplyProcess(options: RequestOptions) {
 }
 
 async function fetchUsage() {
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY
   const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
 
   if (!isNotEmptyString(OPENAI_API_KEY))
