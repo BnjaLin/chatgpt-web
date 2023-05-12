@@ -1,5 +1,6 @@
 import type { AxiosProgressEvent, AxiosResponse, GenericAbortSignal } from 'axios'
 import request from './axios'
+import { router } from '@/router'
 
 export interface HttpOption {
   url: string
@@ -24,9 +25,13 @@ function http<T = any>(
   { url, data, method, headers, onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
 ) {
   const successHandler = (res: AxiosResponse<Response<T>>) => {
+    
     if (res.data.code === 200)
       return res.data
 
+    if (res.data.code === 403) {
+      router.push('/login')
+    }
     return Promise.reject(res.data)
   }
 
@@ -87,6 +92,11 @@ export function streamFetch({ url, data, method = 'POST', signal, onMessage }: H
         body: JSON.stringify(data),
         signal: signal as AbortSignal,
       })
+      if (res.status === 500) {
+        resolve('服务器出错，请联系管理员')
+        onMessage && onMessage('服务器出错，请联系管理员')
+        return
+      }
       const reader = res.body?.getReader()
       if (!reader)
         return

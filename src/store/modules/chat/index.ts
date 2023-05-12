@@ -45,17 +45,24 @@ export const useChatStore = defineStore('chat-store', {
 
     async initHistory() {
       await fetchModel<{ myModels: ChatModel[]; myCollectionModels: ChatModel[] }>().then((res) => {
-        this.chat = res.data.myModels.map((model) => {
+        let chat = this.chat
+        let history = this.history
+        this.chat = res.data.myModels.map((model, i) => {
+          let fI = chat.findIndex(v => v.uuid === model._id)
+          let data = fI === -1 ? [] : chat[fI].data
           return {
             uuid: model._id,
-            data: [],
+            data
           }
         })
         this.history = res.data.myModels.map((model) => {
+          let fI = chat.findIndex(v => v.uuid === model._id)
+          let title = fI === -1 ? model.name : history[fI].title
+          let isEdit = fI === -1 ? false : history[fI].isEdit
           return {
             uuid: model._id,
-            isEdit: false,
-            title: model.name,
+            isEdit,
+            title,
           }
         })
       })

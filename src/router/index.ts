@@ -2,6 +2,7 @@ import type { App } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { ChatLayout } from '@/views/chat/layout'
+import { setupPageGuard } from './permission'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -46,6 +47,8 @@ export const router = createRouter({
   routes,
   scrollBehavior: () => ({ left: 0, top: 0 }),
 })
+
+setupPageGuard(router)
 
 export async function setupRouter(app: App) {
   app.use(router)
