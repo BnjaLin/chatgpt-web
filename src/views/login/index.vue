@@ -73,6 +73,9 @@ const submit = () => {
 
   <div class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-sm p-6 rounded-lg border">
+        <div class="text-xl text-center font-bold mb-6">
+            登录 AsanoGPT
+        </div>
       <form class="space-y-6">
         <div>
           <label for="username" class="block text-sm font-bold leading-4 text-gray-800">用户</label>

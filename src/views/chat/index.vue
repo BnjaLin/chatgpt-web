@@ -35,6 +35,9 @@ const { uuid } = route.params as { uuid: string }
 
 const dataSources = computed(() => chatStore.getChatByUuid(+uuid))
 const conversationList = computed(() => dataSources.value.filter(item => (!item.inversion && !!item.conversationOptions)))
+const modelName = computed(() => {
+  return chatStore.history.filter(v => v.uuid === uuid)[0].title
+})
 
 const prompt = ref<string>('')
 const loading = ref<boolean>(false)
@@ -505,7 +508,7 @@ onUnmounted(() => {
           <template v-if="!dataSources.length">
             <div class="flex items-center justify-center mt-4 text-center text-neutral-300">
               <SvgIcon icon="ri:bubble-chart-fill" class="mr-2 text-3xl" />
-              <span>欢迎来到 Asano AI 智能大模型，很高兴为您排忧解难</span>
+              <span>{{ modelName }}AI知识库</span>
             </div>
           </template>
           <template v-else>
